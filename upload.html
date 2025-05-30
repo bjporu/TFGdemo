@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload</title>
+  <link rel="icon" href="/static/favicon.ico">
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: rgb(251,240,230);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      flex-direction: column;
+    }
+
+    footer {
+      text-align: center;
+      color: rgb(85, 70, 151);
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+      background-color: rgb(85, 70, 151);
+      color: white;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    button:hover,
+    .custom-file-upload:hover {
+      background-color: rgb(115, 100, 181);
+    }
+
+    #backbutton {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+
+      color: rgb(85, 70, 151);
+      background-color: rgb(251,240,230);
+      border: 2px solid rgb(85, 70, 151);
+    }
+
+    #backbutton:hover {
+      color: rgb(115, 100, 181);
+      background-color: rgb(230,220,210);
+      /* border-color: rgb(85, 70, 151); */
+    }
+
+    #audioInput {
+      display: none;
+    }
+
+    .custom-file-upload {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+      background-color: rgb(85, 70, 151);
+      color: white;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-block;
+      margin-bottom: 10px;
+
+      /* height: 40px; */
+      line-height: 20px;
+    }
+
+    #loadingSpinner {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .spinner {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid rgb(85, 70, 151);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #waveformContainer {
+      display: none;
+      width: 80%;
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #waveformBox {
+      width: 100%;
+      border: 1px solid rgb(85, 70, 151);
+      padding: 10px 0;
+    }
+
+    #waveform {
+      overflow-x: auto;
+      margin-bottom: -10px;
+      /* border-radius: 5px; */
+    }
+
+    #zoomSlider {
+      width: 200px;
+      margin-top: 20px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- <h1>Upload Audio</h1> -->
+
+  <div id="upload_buttons" style="display: flex; flex-direction: column; align-items: center;">
+    <div style="display: flex; align-items: center; gap: 10px; height: 40px;">
+      <label for="audioInput" class="custom-file-upload">Upload Audio</label>
+      <input type="file" id="audioInput">
+      <span id="filenameDisplay" style="color: rgb(85, 70, 151); font-weight: 500; font-size: 0.95rem;"></span>
+    </div>
+
+    <button id="uploadBtn" style="margin-top: 15px;">Submit</button>
+  </div>
+
+  <button id="backbutton" onclick="gotoLanding()">Back</button>
+
+  <!-- WaveSurfer container -->
+  <div id="waveformContainer">
+    <div id="waveformBox">
+      <div id="waveform"></div>
+    </div>
+    <label style="margin-top: 10px;">Zoom:
+      <input type="range" id="zoomSlider" min="10" max="1000" value="100" />
+    </label>
+
+    <button id="backward"> < 5s
+      <!-- <img src="project/static/back64.png" alt="Rewind 5s"/> -->
+    </button>
+    <button id="playpause"> Play/Pause
+      <!-- <img src="project/static/playpause64.png" alt="Play/Pause"/> -->
+    </button>
+    <button id="forward"> 5s >
+      <!-- <img src="project/static/forw64.png" alt="Forward 5s"/> -->
+    </button>
+
+  </div>
+
+  <div id="loadingSpinner">
+    <div class="spinner"></div>
+    <p style="text-align:center; color:rgb(85, 70, 151); margin-top:10px;">Processing...</p>
+  </div>
+
+  <footer>
+    <p>Pablo Rodríguez Solans - Universitat Pompeu Fabra, Barcelona @ 2025</p>
+  </footer>
+
+  <script>
+    function gotoLanding() {
+      window.location.href = "landing.html";
+    }
+  </script>
+
+  <!-- From WaveSurfer Examples -->
+  <script type="module">
+
+    document.getElementById("waveformContainer").style.display = "none";
+
+    import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.esm.js'
+    import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.esm.js'
+    import RegionsPlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.esm.js';
+
+    let wavesurfer;
+
+    // document.getElementById("waveformContainer").style.display = "none";
+
+    document.getElementById("audioInput").addEventListener("change", function () {
+      const file = this.files[0];
+      const filenameDisplay = document.getElementById("filenameDisplay");
+      filenameDisplay.textContent = file ? file.name : "";
+    });
+
+    async function createWaveform(blobUrl, annotations) {
+      // document.querySelector("h1").style.display = "none";
+      // document.getElementById("upload_buttons").style.display = "none";
+      document.getElementById("waveformContainer").style.display = "block";
+      // document.getElementById("waveform").style.display = "block";
+
+      wavesurfer = WaveSurfer.create({
+        container: '#waveform',
+        waveColor: 'rgb(150, 135, 215)',
+        progressColor: 'rgb(115, 100, 181)',
+        url: blobUrl,
+        minPxPerSec: 100,
+        plugins: [TimelinePlugin.create()] //, RegionsPlugin.create()]
+      });
+
+      document.querySelector('#playpause').onclick = () => wavesurfer.playPause();
+      document.querySelector('#forward').onclick = () => wavesurfer.skip(5);
+      document.querySelector('#backward').onclick = () => wavesurfer.skip(-5);
+
+      const wsRegions = wavesurfer.registerPlugin(RegionsPlugin.create());
+
+      wavesurfer.on('ready', () => {
+
+        annotations.forEach(element => { 
+          const region = wsRegions.addRegion({
+            start: element.start,          
+            end: element.end,             
+            content: element.chord,  
+            // color: 'rgba(85, 70, 151, 0.2)',
+            color: 'rgba(251,240,230, 0.0)',
+            drag: false,
+            resize: false
+          });
+        });
+      });
+
+      annotations.forEach(element => {
+        console.log(element.start);
+        console.log(element.end);
+        console.log(element.chord);
+      });
+
+      wavesurfer.on('interaction', () => {
+        wavesurfer.play();
+      });
+
+      wavesurfer.on('finish', () => {
+        wavesurfer.setTime(0);
+      });
+
+      const slider = document.getElementById("zoomSlider");
+      slider.addEventListener("input", (e) => {
+        wavesurfer.zoom(e.target.valueAsNumber);
+      });
+    }
+
+    document.getElementById("uploadBtn").addEventListener("click", async () => {
+      const fileInput = document.getElementById("audioInput");
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("Please select a file.");
+        return;
+      }
+
+      document.getElementById("upload_buttons").style.display = "none";
+      document.getElementById("waveformContainer").style.display = "none";
+      document.getElementById("filenameDisplay").style.display = "none";
+
+      const formData = new FormData();
+      formData.append("audio", file);
+
+      
+      document.getElementById("loadingSpinner").style.display = "block";
+
+      try {
+        const response = await fetch("http://localhost:5000/process", {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error("Server error: " + response.statusText);
+        }
+
+        const data = await response.json();
+        console.log("Annotations:", data.annotations);
+
+        const blobUrl = URL.createObjectURL(file);
+        await createWaveform(blobUrl, data.annotations);
+
+      } catch (error) {
+        console.error("Upload error:", error);
+        alert("An error occurred while processing the file.");
+      
+      } finally {
+        // Hide spinner whether success or error
+        document.getElementById("loadingSpinner").style.display = "none";
+      }
+
+
+    });
+  </script>
+
+</body>
+</html>

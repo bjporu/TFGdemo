@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>YouTube Link Processor</title>
+    <link rel="icon" href="/static/favicon.ico">
+
+  <style>
+    body {
+        background-color: rgb(251,240,230);
+        font-family: system-ui, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        flex-direction: column;
+    }
+
+    .input-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    input {
+      height: 48px;
+      width: 500px;
+      border: 1px solid #c0c0c0;
+      border-radius: 4px;
+      padding: 0 16px;
+      font-size: 16px;
+    }
+
+    button {
+        height: 48px;
+        padding: 0 16px;
+        border: none;
+        background-color: rgb(85, 70, 151);
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    button:hover {
+        background-color: rgb(115, 100, 181);
+    }
+
+    footer {
+        text-align: center;
+        color: rgb(85, 70, 151);
+        position: fixed;
+        bottom: 10px;
+        width: 100%;
+    }
+
+    #backbutton {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background-color: transparent;
+        color: rgb(85, 70, 151);
+        border: 2px solid rgb(85, 70, 151);
+    }
+
+    #backbutton:hover {
+        background-color: rgb(230,220,210);
+    }
+
+    #loadingSpinner {
+        margin-top: 20px;
+        display: none;
+    }
+
+    #audioPlayer {
+        margin-top: 20px;
+    }
+
+    #loadingSpinner {
+        display: none;
+        margin-top: 20px;
+    }
+
+    .spinner {
+        border: 6px solid #f3f3f3;
+        border-top: 6px solid rgb(85, 70, 151);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    #waveformContainer {
+        display: none;
+        width: 80%;
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #waveformBox {
+        width: 100%;
+        border: 1px solid rgb(85, 70, 151);
+        padding: 10px 0;
+    }
+
+    #waveform {
+        overflow-x: auto;
+        margin-bottom: -10px;
+        /* border-radius: 5px; */
+    }
+
+    #zoomSlider {
+        width: 200px;
+        margin-top: 20px;
+    }
+
+  </style>
+</head>
+<body>
+
+    <button id="backbutton" onclick="gotoLanding()">Back</button>
+
+    <div class="input-container">
+        <input type="text" id="youtubeLink" placeholder="Paste YouTube link here" />
+        <button id="submitBtn">Submit</button>
+    </div>
+
+    <!-- <div id="loadingSpinner">Processing, please wait...</div> -->
+    <!-- <audio id="audioPlayer" controls style="display: none;"></audio> -->
+
+    <div id="loadingSpinner">
+        <div class="spinner"></div>
+        <p style="text-align:center; color:rgb(85, 70, 151); margin-top:10px;">Processing...</p>
+    </div>
+
+    <!-- WaveSurfer container -->
+    <div id="waveformContainer">
+        <div id="waveformBox">
+            <div id="waveform"></div>
+        </div>
+        <label style="margin-top: 10px;">Zoom:
+            <input type="range" id="zoomSlider" min="10" max="1000" value="100" />
+        </label>
+
+        <button id="backward"> < 5s
+            <!-- <img src="project/static/back64.png" alt="Rewind 5s"/> -->
+        </button>
+        <button id="playpause"> Play/Pause
+            <!-- <img src="project/static/playpause64.png" alt="Play/Pause"/> -->
+        </button>
+        <button id="forward"> 5s >
+            <!-- <img src="project/static/forw64.png" alt="Forward 5s"/> -->
+        </button>
+
+    </div>
+
+    <div id="loadingSpinner">
+        <div class="spinner"></div>
+        <p style="text-align:center; color:rgb(85, 70, 151); margin-top:10px;">Processing...</p>
+    </div>
+
+    <footer>
+        <p>Pablo Rodríguez Solans - Universitat Pompeu Fabra, Barcelona @ 2025</p>
+    </footer>
+
+    <script>
+        function gotoLanding() {
+            window.location.href = "landing.html";
+        }
+    </script>
+
+    <script type="module"> 
+
+        document.getElementById("waveformContainer").style.display = "none";
+
+        import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.esm.js'
+        import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.esm.js'
+        import RegionsPlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.esm.js';
+
+        let wavesurfer;
+
+        // document.getElementById("waveformContainer").style.display = "none";
+
+        // document.getElementById("audioInput").addEventListener("change", function () {
+        //     const file = this.files[0];
+        //     const filenameDisplay = document.getElementById("filenameDisplay");
+        //     filenameDisplay.textContent = file ? file.name : "";
+        // });
+
+        async function createWaveform(audio_url, annotations) {
+            // document.querySelector("h1").style.display = "none";
+            // document.getElementById("upload_buttons").style.display = "none";
+            document.getElementById("waveformContainer").style.display = "block";
+            // document.getElementById("waveform").style.display = "block";
+
+            wavesurfer = WaveSurfer.create({
+                container: '#waveform',
+                waveColor: 'rgb(150, 135, 215)',
+                progressColor: 'rgb(115, 100, 181)',
+                url: audio_url,
+                minPxPerSec: 100,
+                plugins: [TimelinePlugin.create()] //, RegionsPlugin.create()]
+            });
+
+            document.querySelector('#playpause').onclick = () => wavesurfer.playPause();
+            document.querySelector('#forward').onclick = () => wavesurfer.skip(5);
+            document.querySelector('#backward').onclick = () => wavesurfer.skip(-5);
+
+            const wsRegions = wavesurfer.registerPlugin(RegionsPlugin.create());
+
+            wavesurfer.on('ready', () => {
+
+                annotations.forEach(element => { 
+                const region = wsRegions.addRegion({
+                    start: element.start,          
+                    end: element.end,             
+                    content: element.chord,  
+                    // color: 'rgba(85, 70, 151, 0.2)',
+                    color: 'rgba(251,240,230, 0.0)',
+                    drag: false,
+                    resize: false
+                });
+                });
+            });
+
+            annotations.forEach(element => {
+                console.log(element.start);
+                console.log(element.end);
+                console.log(element.chord);
+            });
+
+            wavesurfer.on('interaction', () => {
+                wavesurfer.play();
+            });
+
+            wavesurfer.on('finish', () => {
+                wavesurfer.setTime(0);
+            });
+
+            const slider = document.getElementById("zoomSlider");
+            slider.addEventListener("input", (e) => {
+                wavesurfer.zoom(e.target.valueAsNumber);
+            });
+        }
+
+        document.getElementById("submitBtn").addEventListener("click", async () => {
+            const link = document.getElementById("youtubeLink").value.trim();
+            const loading = document.getElementById("loadingSpinner");
+            // const audioPlayer = document.getElementById("audioPlayer");
+
+            if (!link) {
+                alert("Please enter a YouTube link.");
+                return;
+            }
+
+            // document.getElementById("input-container").style.display = "none";
+            // document.getElementById("waveformContainer").style.display = "none";
+
+            const formData = new FormData();
+            formData.append("youtube_link", link);
+
+            loading.style.display = "block";
+            // audioPlayer.style.display = "none";
+            // audioPlayer.src = "";
+
+            try {
+                const response = await fetch("http://localhost:5000/process", {
+                method: "POST",
+                body: formData
+                });
+
+                if (!response.ok) {
+                throw new Error("Server error: " + response.statusText);
+                }
+
+                const data = await response.json();
+                // console.log("Annotations:", data.annotations);
+                // console.log("Audio URL:", data.audio_url);
+                console.log("Data:", data);
+
+                // audioPlayer.src = data.audio_url;
+                // audioPlayer.style.display = "block";
+
+                // await createWaveform(data.audio_url, data.annotations);
+                // const blobUrl = URL.createObjectURL(file);
+                // const blobUrl = URL.createObjectURL(data.audio_url);
+                await createWaveform(data.audio_url, data.annotations);
+
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Failed to process YouTube link.");
+            } finally {
+                loading.style.display = "none";
+            }
+        });
+    </script>
+</body>
+</html>

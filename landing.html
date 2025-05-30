@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome</title>
+  <link rel="icon" href="/static/favicon.ico">
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: rgb(251,240,230);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      flex-direction: column;
+    }
+
+    .container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      width: 150px;
+      transition: transform 1s ease;
+      align-items: center;
+      position: absolute;
+    }
+
+    .title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: rgb(85, 70, 151);
+      margin-bottom: 40px;
+      width: 200%;
+      text-align: center;
+      align-items: center;
+      position: absolute;
+      transform: translateY(-175%);
+    }
+
+    .text {
+      opacity: 0;
+      margin-left: 20px;
+      font-size: 1.5rem;
+      transition: opacity 1s ease;
+      color: rgb(85, 70, 151);
+    }
+
+    .move-left {
+      transform: translateX(-200%);
+    }
+
+    .move-right {
+      transform: translateX(+12%);
+    }
+
+    .fade-in {
+      opacity: 1;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 15px;
+    }
+
+    .buttons button {
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+      background-color: rgb(85, 70, 151);
+      color: white;
+      cursor: pointer;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+
+    .buttons button.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .buttons button:hover {
+      background-color: rgb(115, 100, 181);
+    }
+
+    footer {
+      text-align: center;
+      /* padding: 10px; */
+      color: rgb(85, 70, 151);
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="title">AI Chord Recognition Framework</div>
+
+    <img src="favicon_io/android-chrome-512x512.png" alt="Logo" class="logo" id="logo"/>
+    <div class="text" id="text">
+      Welcome to my super cool chord detection framework <br> 
+      This is my TFG <br> 
+      Please I really need to pass this subject <br> 
+      Que pasa neng 
+    </div>
+  </div>
+
+  <div class="buttons" id="buttons">
+    <button id="upload_button" onclick="gotoUpload()">Upload from your computer</button>
+    <button>Record in real time</button>
+    <button id="youtube_button" onclick="gotoYoutube()">Use the audio from Youtube Link</button>
+  </div>
+
+  <footer>
+    <p>Pablo Rodríguez Solans - Universitat Pompeu Fabra, Barcelona @ 2025</p>
+  </footer>
+
+  <script>
+
+    function gotoUpload() {
+        window.location.href = "upload.html";
+    }
+
+    function gotoYoutube() {
+        window.location.href = "youtubelink.html";
+    }
+
+    window.onload = () => {
+      setTimeout(() => {
+        const logo = document.getElementById('logo');
+        const text = document.getElementById('text');
+        const buttons = document.getElementById('buttons').children;
+
+        logo.classList.add('move-left');
+
+        setTimeout(() => {
+          text.classList.add('fade-in');
+          text.classList.add('move-right');
+
+          // Fade in buttons one by one
+          setTimeout(() => {
+            Array.from(buttons).forEach((btn, index) => {
+              setTimeout(() => {
+                btn.classList.add('show');
+              }, index * 300); // 300ms between buttons
+            });
+          }, 1000);
+        }, 1000);
+      }, 1000);
+    };
+  </script>
+</body>
+</html>
