@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Record</title>
+  <link rel="icon" href="/static/favicon.ico">
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: rgb(251, 240, 230);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      flex-direction: column;
+      padding: 2rem;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
+      background-color: rgb(85, 70, 151);
+      color: white;
+      cursor: pointer;
+      font-family: inherit;
+      margin: 0.5rem;
+    }
+
+    footer {
+      text-align: center;
+      color: rgb(85, 70, 151);
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+
+    #backbutton {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background-color: transparent;
+      color: rgb(85, 70, 151);
+      border: 2px solid rgb(85, 70, 151);
+    }
+
+    #backbutton:hover {
+      background-color: rgb(230, 220, 210);
+    }
+
+    #mic {
+      width: 100%;
+      max-width: 600px;
+      height: 120px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-top: 1rem;
+    }
+
+    #recordings {
+      margin-top: 2rem;
+    }
+
+    select, label {
+      margin: 0.5rem;
+    }
+
+    #progress {
+      margin: 1rem;
+      font-size: 1.2rem;
+    }
+
+    #mic-select {
+        display: none;
+    }
+
+    #record-controls {
+      display: flex;
+      gap: 15px;
+    }
+
+    #loadingSpinner {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .spinner {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid rgb(85, 70, 151);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #progress {
+      color: rgb(85, 70, 151);
+      font-weight: 500;
+    }
+
+    #waveformContainer {
+      display: none;
+      width: 80%;
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #waveformBox {
+      width: 100%;
+      border: 1px solid rgb(85, 70, 151);
+      padding: 10px 0;
+    }
+
+    #waveform {
+      overflow-x: auto;
+      margin-bottom: -10px;
+      /* border-radius: 5px; */
+    }
+
+    #zoomSlider {
+      width: 200px;
+      margin-top: 20px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <button id="backbutton" onclick="gotoLanding()">Back</button>
+
+  <div id="waveformContainer">
+    <div id="waveformBox">
+      <div id="waveform"></div>
+    </div>
+  </div>
+
+  <div id="playbackControls"> 
+    <label style="margin-top: 10px;">Zoom:
+      <input type="range" id="zoomSlider" min="10" max="1000" value="100" />
+    </label>
+
+    <button id="backward"> < 5s </button>
+    <button id="playpause"> Play/Pause </button>
+    <button id="forward"> 5s > </button>
+  </div>
+
+  <div id="mic"></div>
+
+  <div id="record-controls"> 
+    <button id="pause" style="display: none;">Pause</button>
+    <button id="record">Record</button>
+    <p id="progress">00:00</p>
+  </div>
+
+  <select id="mic-select">
+    <option value="" hidden>Select mic</option>
+  </select>
+
+  <!-- <div id="mic"></div> -->
+
+  <div id="loadingSpinner">
+    <div class="spinner"></div>
+    <p style="text-align:center; color:rgb(85, 70, 151); margin-top:10px;">Processing...</p>
+  </div>
+
+  <footer>
+    <p>Pablo Rodríguez Solans - Universitat Pompeu Fabra, Barcelona @ 2025</p>
+  </footer>
+
+  <script>
+    function gotoLanding() {
+      window.location.href = "landing.html";
+    }
+  </script>
+
+  <script type="module">
+    import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.esm.js';
+    import RecordPlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/record.esm.js';
+    import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.esm.js';
+    import RegionsPlugin from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.esm.js';
+
+    let micWaveSurfer, playbackWaveSurfer;
+    let record;
+
+    let recordedUrl;
+    let recordedBlob;
+
+    const createWaveSurfer = () => {
+      if (micWaveSurfer) micWaveSurfer.destroy();
+
+      document.getElementById("waveformContainer").style.display = "none";
+      document.getElementById("playbackControls").style.display = "none";
+
+      micWaveSurfer = WaveSurfer.create({
+        container: '#mic',
+        waveColor: 'rgb(150, 135, 215)',
+        progressColor: 'rgb(115, 100, 181)',
+      });
+
+      record = micWaveSurfer.registerPlugin(
+        RecordPlugin.create({
+          renderRecordedAudio: false,
+          scrollingWaveform: false,
+          continuousWaveform: true,
+          continuousWaveformDuration: 30,
+        })
+      );
+
+      record.on('record-end', (blob) => {
+        recordedBlob = blob;
+        recordedUrl = URL.createObjectURL(blob);
+
+        pauseButton.style.display = 'none';
+        recButton.style.display = 'none';
+        progress.style.display = 'none';
+
+        document.getElementById("loadingSpinner").style.display = "block";
+        upload_to_backend();
+      });
+
+      record.on('record-progress', (time) => {
+        updateProgress(time);
+      });
+    };
+
+    const progress = document.querySelector('#progress');
+    const updateProgress = (time) => {
+      const formattedTime = [
+        Math.floor((time % 3600000) / 60000),
+        Math.floor((time % 60000) / 1000),
+      ].map(v => (v < 10 ? '0' + v : v)).join(':');
+      progress.textContent = formattedTime;
+    };
+
+    const pauseButton = document.querySelector('#pause');
+    pauseButton.onclick = () => {
+      if (record.isPaused()) {
+        record.resumeRecording();
+        pauseButton.textContent = 'Pause';
+      } else {
+        record.pauseRecording();
+        pauseButton.textContent = 'Resume';
+      }
+    };
+
+    const micSelect = document.querySelector('#mic-select');
+    RecordPlugin.getAvailableAudioDevices().then((devices) => {
+      devices.forEach((device) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.text = device.label || device.deviceId;
+        micSelect.appendChild(option);
+      });
+    });
+
+    const recButton = document.querySelector('#record');
+    recButton.onclick = () => {
+      if (record.isRecording() || record.isPaused()) {
+        record.stopRecording();
+        recButton.textContent = 'Record';
+        pauseButton.style.display = 'none';
+        return;
+      }
+
+      recButton.disabled = true;
+      const deviceId = micSelect.value;
+
+      record.startRecording({ deviceId }).then(() => {
+       recButton.textContent = 'Submit';
+        recButton.disabled = false;
+        pauseButton.style.display = 'inline';
+      });
+    };
+
+    async function createWaveform(blobUrl, annotations) {
+      if (playbackWaveSurfer) playbackWaveSurfer.destroy();
+
+      document.getElementById("mic").style.display = "none";
+      document.getElementById("waveformContainer").style.display = "block";
+      document.getElementById("playbackControls").style.display = "block";
+
+      setTimeout(() => {
+          playbackWaveSurfer = WaveSurfer.create({
+          container: '#waveform',
+          waveColor: 'rgb(150, 135, 215)',
+          progressColor: 'rgb(115, 100, 181)',
+          url: blobUrl,
+          minPxPerSec: 100,
+          plugins: [TimelinePlugin.create()]
+        });
+
+        document.querySelector('#playpause').onclick = () => playbackWaveSurfer.playPause();
+        document.querySelector('#forward').onclick = () => playbackWaveSurfer.skip(5);
+        document.querySelector('#backward').onclick = () => playbackWaveSurfer.skip(-5);
+
+        const wsRegions = playbackWaveSurfer.registerPlugin(RegionsPlugin.create());
+
+        playbackWaveSurfer.on('ready', () => {
+          annotations.forEach(el => {
+            wsRegions.addRegion({
+              start: el.start,
+              end: el.end,
+              content: el.chord,
+              color: 'rgba(251,240,230, 0.0)',
+              drag: false,
+              resize: false
+            });
+          });
+        });
+
+        playbackWaveSurfer.on('interaction', () => playbackWaveSurfer.play());
+        playbackWaveSurfer.on('finish', () => playbackWaveSurfer.setTime(0));
+
+        document.getElementById("zoomSlider").addEventListener("input", (e) => {
+          playbackWaveSurfer.zoom(e.target.valueAsNumber);
+        });
+      },0);
+    }
+
+    async function upload_to_backend() {
+      const formData = new FormData();
+      formData.append("audio", recordedBlob);
+
+      try {
+        const response = await fetch("http://localhost:5000/process", {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) throw new Error("Server error: " + response.statusText);
+
+        const data = await response.json();
+        console.log("Annotations:", data.annotations);
+
+        await createWaveform(recordedUrl, data.annotations);
+
+      } catch (error) {
+        console.error("Upload error:", error);
+        alert("An error occurred while processing the file.");
+      } finally {
+        document.getElementById("loadingSpinner").style.display = "none";
+      }
+    }
+
+    createWaveSurfer();
+  </script>
+
+</body>
+</html>

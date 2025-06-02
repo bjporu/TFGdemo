@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>YouTube Link Processor</title>
+    <title>YouTube Upload</title>
     <link rel="icon" href="/static/favicon.ico">
 
   <style>
@@ -199,7 +199,8 @@
 
         async function createWaveform(audio_url, annotations) {
             // document.querySelector("h1").style.display = "none";
-            // document.getElementById("upload_buttons").style.display = "none";
+            document.getElementById("youtubeLink").style.display = "none";
+            document.getElementById("submitBtn").style.display = "none";
             document.getElementById("waveformContainer").style.display = "block";
             // document.getElementById("waveform").style.display = "block";
 

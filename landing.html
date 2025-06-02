@@ -118,9 +118,9 @@
   </div>
 
   <div class="buttons" id="buttons">
-    <button id="upload_button" onclick="gotoUpload()">Upload from your computer</button>
-    <button>Record in real time</button>
-    <button id="youtube_button" onclick="gotoYoutube()">Use the audio from Youtube Link</button>
+    <button id="upload_button" onclick="gotoUpload()">Upload from your device</button>
+    <button id="record_button" onclick="gotoRecord()">Record in real time</button>
+    <button id="youtube_button" onclick="gotoYoutube()">Use the audio from a Youtube link</button>
   </div>
 
   <footer>
@@ -135,6 +135,10 @@
 
     function gotoYoutube() {
         window.location.href = "youtubelink.html";
+    }
+
+    function gotoRecord() {
+      window.location.href = "record.html";
     }
 
     window.onload = () => {
